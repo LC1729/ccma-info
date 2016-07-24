@@ -43,9 +43,9 @@ capis = []
 def cli_parse():
     parser = argparse.ArgumentParser(description='CCMA.cat INFO')
     parser.add_argument('--batch', dest='batch', nargs='?', default=False,
-                        help='Run without asking for url')
+                        help="Executar sense demanar l'URL.")
     parser.add_argument('--debug', dest='verbose', action='store_true',
-                        help='Debug mode')
+                        help="Activar la depuració.")
     parser.set_defaults(verbose=False)
     args = parser.parse_args()
     return args
@@ -53,17 +53,17 @@ def cli_parse():
 
 def get_url(args):
     if not args.batch:
-        url = input("Write your URL: ")
+        url = input("Escrigui la seva adreça URL: ")
     else:
         url = args.batch
     if url.find(SUPER3_URL) > -1:
-        logger.debug("SUPER3 link")
+        logger.debug("Adreça del SUPER3")
         return url, SUPER3_FILTER
     elif url.find(TV3_URL) > -1:
-        logger.debug("TV3 link")
+        logger.debug("Adreça de TV3")
         return url, TV3_FILTER
     else:
-        logger.error("Given URL is not supported.")
+        logger.error("Aquesta URL no és compatible.")
         sys.exit(5)
 
 
@@ -71,22 +71,22 @@ def load_json():
     try:
         json_file = open(TMP_FILE, "r").read()
         j = json.loads(json_file)
-        logger.info("Using old temporary list")
+        logger.info("Utilitzant l'antiga llista temporal.")
     except:
-        logger.info("Creating new temporary list")
+        logger.info("Creant la nova llista temporal.")
         j = []
     return j
 
 
 def create_json(jin):
     j = json.loads(json.dumps(jin))
-    logger.info("Rewriting temporary list")
+    logger.info("Reescrivint la llista temporal.")
     try:
         with open(TMP_FILE, 'w') as outfile:
             json.dump(j, outfile)
-        logger.debug("Done rewriting temporary list")
+        logger.debug("Reescriptura de la llista temporal completada.")
     except:
-        logger.error("Failed to write the temporary list.")
+        logger.error("No s'ha pogut escriure la llista temporal.")
         sys.exit(1)
 
 
@@ -105,34 +105,34 @@ def main():
 
     html_doc = requests.get(url).text
     soup = bs4.BeautifulSoup(html_doc, 'html.parser')
-    logger.info("Parsing URL {}".format(url))
+    logger.info("Analitzant l'URL {}".format(url))
     try:
         capis_meta = soup.find_all('a', class_=parse_filter)
         for capi_meta in capis_meta:
             p = re.compile('/video/([0-9]{7})/$')
             capis.append(p.search(capi_meta['href']).group(1))
     except:
-        logger.error("Could not parse given url")
+        logger.error("No s'ha pogut analitzar l'URL")
         sys.exit(2)
 
     capis.reverse()
     first_run = True
     new = False
     for capi in capis:
-        logger.debug("Going for ID:{}".format(capi))
+        logger.debug("Aconseguint l'ID:{}".format(capi))
         try:
             html_doc = requests.get(subs1_urlbase + capi).text
             soup = bs4.BeautifulSoup(html_doc, 'html.parser')
             j = json.loads(soup.text)
             show = j['informacio']['programa']
         except:
-            logger.error("Something went very wrong, can't parse second level url.")
+            logger.error("Alguna cosa ha sortit molt malament, no es pot analitzar el segon nivell d'URL.")
             sys.exit(2)
         txt_file = list()
 
         if first_run:
             if show not in js:
-                logger.debug("Show not in temporary file")
+                logger.debug("No mostrar al fitxer temporal.")
                 js.append(show)
                 js.append([])
                 new = True
@@ -140,9 +140,9 @@ def main():
             first_run = False
         if not new:
             if capi in js[pos]:
-                logger.debug("Episode already checked, skipping...")
+                logger.debug("L'episodi ja existeix, saltant-lo...")
                 continue
-        logger.debug("Going for multiple data.")
+        logger.debug("Aconseguint diverses dades.")
         # HEADER
         try:
             txt_file.append("{} {} ({})".format(show, j['informacio']['capitol'],
@@ -190,11 +190,11 @@ def main():
         try:
             out_name_file = remove_invalid_win_chars(show, '\/:*?"<>|')
             outfile = open('%s.txt' % out_name_file, 'a')
-            logger.info("Writing to {}".format(out_name_file))
+            logger.info("Escrivint a {}".format(out_name_file))
             outfile.write('\n'.join(txt_file))
             outfile.close()
         except:
-            logger.error("Writing episode to file failed.")
+            logger.error("Error al escriure l'episodi.")
             sys.exit(1)
         js[pos].append(capi)
     create_json(js)
